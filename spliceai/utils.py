@@ -1,3 +1,6 @@
+from keras import backend as K
+K.set_session(K.tf.Session(config=K.tf.ConfigProto(intra_op_parallelism_threads=2, inter_op_parallelism_threads=2)))
+
 from pkg_resources import resource_filename
 import pandas as pd
 import numpy as np
