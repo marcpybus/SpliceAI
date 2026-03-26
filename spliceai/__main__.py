@@ -2,6 +2,7 @@ import argparse
 import logging
 import pysam
 from spliceai.utils import Annotator, get_delta_scores, INFO_FIELD_KEYS
+import tensorflow as tf
 
 try:
     from sys.stdin import buffer as std_in
@@ -32,6 +33,10 @@ def get_options():
                         type=int, choices=[0, 1],
                         help='mask scores representing annotated acceptor/donor gain and '
                              'unannotated acceptor/donor loss, defaults to 0')
+    parser.add_argument('-C', metavar='c', nargs='?',
+                        type=int, default=None,
+                        help='Number of CPUs to use for TensorFlow threading (default: all)')
+   
     args = parser.parse_args()
 
     return args
@@ -43,7 +48,7 @@ def main():
 
     if None in [args.I, args.O, args.D, args.M]:
         logging.error('Usage: spliceai [-h] [-I [input]] [-O [output]] -R reference -A annotation '
-                      '[-D [distance]] [-M [mask]]')
+                      '[-D [distance]] [-M [mask]] [-C [cpus]]')
         exit()
 
     try:
@@ -51,6 +56,10 @@ def main():
     except (IOError, ValueError) as e:
         logging.error('{}'.format(e))
         exit()
+
+    if args.C is not None:
+        tf.config.threading.set_intra_op_parallelism_threads(args.C)
+        tf.config.threading.set_inter_op_parallelism_threads(args.C)
 
     header = vcf.header
     header.add_line('##INFO=<ID=SpliceAI,Number=.,Type=String,Description="SpliceAIv1.3.1 variant '
