@@ -5,6 +5,7 @@ from pyfastx import Fasta
 from keras.models import load_model
 import logging
 from sys import exit
+from concurrent.futures import ThreadPoolExecutor
 
 INFO_FIELD_KEYS = [
     'ALLELE',
@@ -130,8 +131,18 @@ def get_delta_scores_for_transcript(x_ref, x_alt, ref_len, alt_len, strand, cov,
         x_ref = x_ref[:, ::-1, ::-1]
         x_alt = x_alt[:, ::-1, ::-1]
 
-    y_ref = np.mean([ann.models[m].predict(x_ref, verbose=0) for m in range(5)], axis=0)
-    y_alt = np.mean([ann.models[m].predict(x_alt, verbose=0) for m in range(5)], axis=0)
+    # my modification for multitreading
+
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        preds_ref = list(executor.map(lambda m: ann.models[m].predict(x_ref), range(5)))
+    y_ref = np.mean(preds_ref, axis=0)
+
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        preds_alt = list(executor.map(lambda m: ann.models[m].predict(x_alt), range(5)))
+    y_alt = np.mean(preds_alt, axis=0)
+
+    #y_ref = np.mean([ann.models[m].predict(x_ref, verbose=0) for m in range(5)], axis=0)
+    #y_alt = np.mean([ann.models[m].predict(x_alt, verbose=0) for m in range(5)], axis=0)
 
     if strand == '-':
         y_ref = y_ref[:, ::-1]
